@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <title>Exp Watch (Test)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Prompt', sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+        }
+
+        body,
+        input,
+        select,
+        button,
+        textarea {
+            font-family: 'Prompt', sans-serif;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 420px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h2 {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .header {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .card {
+            background: #fff;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        input,
+        select,
+        button {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+        }
+
+        #suggestions {
+            background: #fff;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .suggestion-item:hover {
+            background: #f0f0f0;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: 0.15s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::after {
+            content: "";
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            transform: scale(0);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        button:active::after {
+            transform: scale(2);
+            opacity: 1;
+            transition: 0.4s;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        #pageAdd,
+        #pageList {
+            transition: all 0.25s ease;
+        }
+
+        .danger {
+            background: #f44336;
+        }
+
+        .expired {
+            color: red;
+        }
+
+        .warning {
+            color: orange;
+        }
+
+        #popupOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+            z-index: 999;
+        }
+
+        #popupBox {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            width: 80%;
+            max-width: 320px;
+            text-align: center;
+        }
+
+        .popup-animate {
+            animation: popupScale 0.2s ease;
+        }
+
+        #popupActions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .ok-btn {
+            background: #4CAF50;
+        }
+
+        .cancel-btn {
+            background: #ccc;
+            color: black;
+        }
+
+        .tab {
+            display: flex;
+            background: #eee;
+            border-radius: 12px;
+            padding: 5px;
+            margin-bottom: 8px;
+        }
+
+        .tab button {
+            flex: 1;
+            border-radius: 10px;
+            background: transparent;
+            color: black;
+        }
+
+        .tab button.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        input,
+        select {
+            border-radius: 14px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            width: 100%;
+            display: block;
+            margin: 8px 0;
+            padding: 12px;
+            transition: all 0.2s ease;
+        }
+
+        input:disabled {
+            background: #eee;
+            color: #999;
+        }
+
+        input:focus {
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border: 1px solid #4CAF50;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #4CAF50, #66bb6a);
+            font-size: 16px;
+        }
+
+        @keyframes popupScale {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-box {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #ddd;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes popupBounce {
+            0% {
+                transform: scale(0.7);
+                opacity: 0;
+            }
+
+            60% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .popup-animate {
+            animation: popupBounce 0.25s ease;
+        }
+
+        #suggestions {
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        button:hover {
+            filter: brightness(1.05);
+        }
+
+        .skeleton {
+            height: 150px;
+            border-radius: 15px;
+            background: linear-gradient(90deg, #eee, #ddd, #eee);
+            background-size: 200% 100%;
+            animation: loading 1s infinite;
+        }
+
+        @keyframes loading {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+
+        <div class="header">
+            🚨 ระบบเฝ้าระวังยาหมดอายุ 🚨
+        </div>
+
+        <div class="tab">
+            <button onclick="showPage('add')" id="btnAdd">➕ เพิ่มรายการ</button>
+            <button onclick="showPage('list')" id="btnList">📋 แก้ไขรายการ</button>
+        </div>
+
+        <!-- ADD FORM -->
+        <div id="pageAdd">
+
+            <select id="category">
+                <option value="">เลือกประเภทยา</option>
+                <option value="tablet">ยาเม็ด</option>
+                <option value="liquid">ยาน้ำ/ยาฉีด</option>
+            </select>
+
+            <input type="text" id="search" placeholder="กรุณาเลือกประเภทยาก่อน" disabled autocomplete="off">
+
+            <div id="suggestions"></div>
+
+            <input type="text" id="lot" placeholder="Lot" autocomplete="off">
+
+            <input type="date" id="expDate" autocomplete="off">
+
+            <select id="watchMonths">
+                <option value="">ระยะเฝ้าระวัง</option>
+                <option value="1">1 เดือน</option>
+                <option value="2">2 เดือน</option>
+                <option value="3">3 เดือน</option>
+                <option value="4">4 เดือน</option>
+                <option value="5">5 เดือน</option>
+                <option value="6">6 เดือน</option>
+                <option value="7">7 เดือน</option>
+            </select>
+
+            <button class="save-btn" onclick="addItem()">💾 บันทึก</button>
+        </div>
+
+        <!-- LIST -->
+        <div id="pageList" style="display:none;">
+            <div id="list"></div>
+        </div>
+
+        <div id="popupOverlay" style="display:none;">
+            <div id="popupBox" class="popup-animate">
+
+                <div id="popupIcon" style="font-size:40px; margin-bottom:10px;"></div>
+
+                <p id="popupMessage"></p>
+
+                <div id="popupActions">
+                    <button id="popupCancel" class="cancel-btn">ยกเลิก</button>
+                    <button id="popupOk" class="ok-btn">ตกลง</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" style="display:none;">
+        <div class="loading-box">
+            <div class="spinner"></div>
+            <p>กำลังลบรายการยา...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbw5tyy9AWzZHkFNe_G1e89ncKCtwvFfZspHphvo0ufifXuDGrYP6LkvTZi3d2uJObNw/exec";
+        let USER_ID = "";
+        let selectedDrug = "";
+        let drugs = [];
+
+        // filter drugs
+        document.getElementById("category").addEventListener("change", loadDrugs);
+        document.getElementById("search").addEventListener("input", renderDrugList);
+
+        function loadDrugs() {
+            const category = document.getElementById("category").value;
+            const searchInput = document.getElementById("search");
+            const container = document.getElementById("suggestions");
+
+            if (!category) return;
+
+            // 🔒 ปิด input + แสดง loading
+            searchInput.disabled = true;
+            searchInput.value = "กำลังโหลด...";
+
+            container.innerHTML = ""; // เคลียร์รายการเก่า
+
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    action: "getDrugList",
+                    category: category
+                })
+            })
+                .then(res => res.json())
+                .then(res => {
+                    drugs = res.data.map(name => ({
+                        name: name,
+                        category: category
+                    }));
+
+                    selectedDrug = "";
+
+                    // ✅ เปิดใช้งาน input
+                    searchInput.disabled = false;
+                    searchInput.value = "";
+                    searchInput.placeholder = "ค้นหาชื่อยา...";
+                });
+        }
+
+        function renderDrugList() {
+            const keyword = document.getElementById("search").value.toLowerCase();
+            const container = document.getElementById("suggestions");
+
+            container.innerHTML = "";
+
+            if (!keyword) return;
+
+            drugs
+                .filter(d => String(d.name).toLowerCase().includes(keyword))
+                .slice(0, 10) // จำกัด 10 รายการ
+                .forEach(d => {
+                    const div = document.createElement("div");
+                    div.className = "suggestion-item";
+                    div.textContent = d.name;
+
+                    div.onclick = () => {
+                        document.getElementById("search").value = d.name;
+                        selectedDrug = d.name;
+                        container.innerHTML = ""; // ซ่อนรายการ
+                    };
+
+                    container.appendChild(div);
+                });
+        }
+
+        // ADD
+        function addItem() {
+
+            const drugInput = document.getElementById("search").value.trim();
+            const lot = document.getElementById("lot").value.trim();
+            const expDate = document.getElementById("expDate").value;
+            const watch = document.getElementById("watchMonths").value;
+            const category = document.getElementById("category").value;
+
+            // 🔥 validate ครบทุกช่อง
+            if (!category || !drugInput || !lot || !expDate || !watch) {
+                showPopup({
+                    message: "กรุณากรอกข้อมูลให้ครบ",
+                    type: "warning"
+                });
+                return;
+            }
+
+            const data = {
+                action: "addExp",
+                drugName: selectedDrug || drugInput, // 🔥 เลือกหรือพิมเองได้
+                category: category,
+                lot: lot,
+                expDate: expDate,
+                watchMonths: Number(watch),
+                userId: USER_ID
+            };
+
+            const btn = document.querySelector(".save-btn");
+            btn.innerText = "กำลังบันทึก...";
+            btn.disabled = true;
+
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify(data)
+            })
+                .then(res => res.json())
+                .then(res => {
+                    showPopup({
+                        message: res.message || "บันทึกสำเร็จ",
+                        type: "success"
+                    });
+
+                    btn.innerText = "💾 บันทึก";   // 🔥 คืนค่า
+                    btn.disabled = false;         // 🔥 เปิดปุ่ม
+
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                    if (navigator.vibrate) navigator.vibrate(50);
+
+                    // 🔥 เคลียร์ฟอร์มทั้งหมด
+                    document.getElementById("category").value = "";
+                    document.getElementById("search").value = "";
+                    document.getElementById("lot").value = "";
+                    document.getElementById("expDate").value = "";
+                    document.getElementById("watchMonths").value = "";
+
+                    document.getElementById("suggestions").innerHTML = "";
+
+                    selectedDrug = "";
+
+                    loadList();
+                });
+        }
+
+        // LOAD LIST
+        function loadList() {
+
+            const container = document.getElementById("list");
+
+            // 🔥 ใส่ตรงนี้ (ก่อน fetch)
+            container.innerHTML = `
+      <div class="card skeleton"></div>
+      <div class="card skeleton"></div>
+      <div class="card skeleton"></div>
+      <div class="card skeleton"></div>
+      <div class="card skeleton"></div>
+    `;
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    action: "getMyList",
+                    userId: USER_ID
+                })
+            })
+                .then(res => res.json())
+                .then(res => {
+                    const container = document.getElementById("list");
+                    container.innerHTML = "";
+
+                    res.data.sort((a, b) => a.daysLeft - b.daysLeft);
+
+                    res.data.forEach(item => {
+                        const div = document.createElement("div");
+                        div.className = "card";
+
+                        if (item.daysLeft < 0)
+                            div.style.borderLeft = "5px solid red";
+                        else if (item.daysLeft <= 30)
+                            div.style.borderLeft = "5px solid orange";
+                        else
+                            div.style.borderLeft = "5px solid green";
+
+                        let statusClass = "";
+                        if (item.daysLeft < 0) statusClass = "expired";
+                        else if (item.daysLeft <= 30) statusClass = "warning";
+
+                        div.innerHTML = `
+                            <b>${item.drugName}</b><br>
+                            Lot: ${item.lot}<br>
+                            Exp: ${new Date(item.expDate).toLocaleDateString()}<br>
+                            <span class="${statusClass}">
+                            ${item.daysLeft < 0 ? "หมดอายุแล้ว" : "เหลือ " + item.daysLeft + " วัน"}
+                            </span>
+                            <br><br>
+                            <button class="danger" onclick="deleteItem('${item.id}')">ลบ</button>
+                        `;
+
+                        container.appendChild(div);
+                    });
+                });
+        }
+
+        // DELETE
+        function deleteItem(id) {
+            showPopup({
+                message: "ยืนยันการลบรายการนี้?",
+                type: "warning",
+                onConfirm: () => {
+
+                    // 🔥 เปิด loading
+                    document.getElementById("loadingOverlay").style.display = "flex";
+
+                    fetch(API_URL, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            action: "deleteItem",
+                            id: id,
+                            userId: USER_ID
+                        })
+                    })
+                        .then(res => res.json())
+                        .then(() => {
+
+                            // 🔥 ปิด loading
+                            document.getElementById("loadingOverlay").style.display = "none";
+
+                            loadList();
+
+                            // 🔥 popup สำเร็จ
+                            showPopup({
+                                message: "ลบรายการเรียบร้อย",
+                                type: "success"
+                            });
+
+                            // 🔥 ปิด popup อัตโนมัติ
+                            setTimeout(() => {
+                                document.getElementById("popupOverlay").style.display = "none";
+                            }, 1500);
+
+                        });
+                }
+            });
+        }
+
+        function toggleForm(enable) {
+            const search = document.getElementById("search");
+            const lot = document.getElementById("lot");
+            const exp = document.getElementById("expDate");
+            const watch = document.getElementById("watchMonths");
+            const btn = document.querySelector(".save-btn");
+
+            search.disabled = !enable;
+            lot.disabled = !enable;
+            exp.disabled = !enable;
+            watch.disabled = !enable;
+            btn.disabled = !enable;
+
+            if (!enable) {
+                search.value = "";
+                lot.value = "";
+                exp.value = "";
+                watch.value = "";
+                document.getElementById("suggestions").innerHTML = "";
+                selectedDrug = "";
+                search.placeholder = "กรุณาเลือกประเภทยาก่อน";
+            }
+        }
+
+        function showPage(page) {
+            const add = document.getElementById("pageAdd");
+            const list = document.getElementById("pageList");
+
+            const btnAdd = document.getElementById("btnAdd");
+            const btnList = document.getElementById("btnList");
+
+            if (page === "add") {
+
+                resetForm();
+
+                add.style.opacity = 0;
+                setTimeout(() => {
+                    add.style.display = "block";
+                    list.style.display = "none";
+                    add.style.opacity = 1;
+                }, 100);
+
+                btnAdd.classList.add("active");   // ✅ เพิ่ม
+                btnList.classList.remove("active"); // ✅ เพิ่ม
+            } else {
+                add.style.opacity = 0;
+                setTimeout(() => {
+                    add.style.display = "none";
+                    list.style.display = "block";
+                    add.style.opacity = 1;
+                }, 100);
+
+                btnAdd.classList.remove("active"); // ✅ เพิ่ม
+                btnList.classList.add("active");   // ✅ เพิ่ม
+
+                loadList(); // 🔥 โหลดข้อมูลตอนเปิดหน้า
+            }
+        }
+
+        function resetForm() {
+            document.getElementById("category").value = "";
+            document.getElementById("search").value = "";
+            document.getElementById("lot").value = "";
+            document.getElementById("expDate").value = "";
+            document.getElementById("watchMonths").value = "";
+
+            document.getElementById("suggestions").innerHTML = "";
+
+            selectedDrug = "";
+
+            // 🔒 กลับไปล็อกเหมือนตอนเริ่ม
+            toggleForm(false);
+        }
+
+        function showPopup({ message, type = "info", onConfirm = null }) {
+
+            const overlay = document.getElementById("popupOverlay");
+            const msg = document.getElementById("popupMessage");
+            const icon = document.getElementById("popupIcon");
+            const okBtn = document.getElementById("popupOk");
+            const cancelBtn = document.getElementById("popupCancel");
+
+            msg.innerText = message;
+
+            // 🎨 icon ตามประเภท
+            if (type === "success") icon.innerText = "✅";
+            else if (type === "error") icon.innerText = "❌";
+            else if (type === "warning") icon.innerText = "⚠️";
+            else icon.innerText = "ℹ️";
+
+            overlay.style.display = "flex";
+
+            if (onConfirm) {
+                cancelBtn.style.display = "block";
+
+                okBtn.onclick = () => {
+                    overlay.style.display = "none";
+                    onConfirm();
+                };
+
+                cancelBtn.onclick = () => {
+                    overlay.style.display = "none";
+                };
+
+            } else {
+                cancelBtn.style.display = "none";
+
+                okBtn.onclick = () => {
+                    overlay.style.display = "none";
+                };
+            }
+        }
+
+        async function initLIFF() {
+            await liff.init({ liffId: "YOUR_LIFF_ID" });
+
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+
+            const profile = await liff.getProfile();
+            USER_ID = profile.userId;
+
+            // 🔥 ย้ายมาไว้ตรงนี้
+            toggleForm(false);
+            renderDrugList();
+            loadList();
+            showPage("add");
+        }
+
+        document.getElementById("category").addEventListener("change", () => {
+            const category = document.getElementById("category").value;
+
+            if (!category) {
+                toggleForm(false); // 🔒 ล็อก
+                return;
+            }
+
+            toggleForm(true); // 🔓 ปลดล็อก
+            loadDrugs();      // โหลดยา
+        });
+
+        // INIT
+        toggleForm(false); // 🔒 ล็อกทั้งหมดตอนเข้าเว็บ
+
+        // renderDrugList();
+        // loadList();
+        // showPage("add");
+
+        initLIFF();
+    </script>
+
+</body>
+
+</html>
