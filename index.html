@@ -141,10 +141,17 @@
 
         .expired {
             color: red;
+            font-weight: 500;
         }
 
         .warning {
             color: orange;
+            font-weight: 500;
+        }
+
+        .safe {
+            color: #2e7d32;
+            font-weight: 500;
         }
 
         #popupOverlay {
@@ -347,6 +354,99 @@
                 background-position: -200% 0;
             }
         }
+
+        .dash-grid {
+            display: flex;
+            gap: 10px;
+        }
+
+        .dash-card {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            padding: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .dash-number {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .dash-label {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        /* สี */
+        .dash-card.red {
+            border-left: 5px solid red;
+        }
+
+        .dash-card.orange {
+            border-left: 5px solid orange;
+        }
+
+        .dash-card.green {
+            border-left: 5px solid green;
+        }
+
+        #dashboard {
+            transition: opacity 0.3s ease;
+        }
+
+        #editOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+        }
+
+        #editBox {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 350px;
+        }
+
+        .edit-save-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .card-flex {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .card-left {
+            flex: 2;
+        }
+
+        .card-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .card-right button {
+            width: 100%;
+            font-size: 14px;
+            padding: 8px;
+        }
     </style>
 </head>
 
@@ -393,6 +493,27 @@
             <button class="save-btn" onclick="addItem()">💾 บันทึก</button>
         </div>
 
+        <div id="dashboard" style="display:none; margin-bottom:12px;">
+            <div class="dash-grid">
+
+                <div class="dash-card red">
+                    <div class="dash-number" id="countExpired">0</div>
+                    <div class="dash-label">หมดอายุ</div>
+                </div>
+
+                <div class="dash-card orange">
+                    <div class="dash-number" id="countWarning">0</div>
+                    <div class="dash-label">ใกล้หมด</div>
+                </div>
+
+                <div class="dash-card green">
+                    <div class="dash-number" id="countSafe">0</div>
+                    <div class="dash-label">ปกติ</div>
+                </div>
+
+            </div>
+        </div>
+
         <!-- LIST -->
         <div id="pageList" style="display:none;">
             <div id="list"></div>
@@ -421,11 +542,37 @@
         </div>
     </div>
 
+    <div id="editOverlay" style="display:none;">
+        <div id="editBox">
+
+            <h3>แก้ไขรายการยา</h3>
+
+            <input type="text" id="editDrug" placeholder="ชื่อยา">
+            <input type="text" id="editLot" placeholder="Lot">
+            <input type="date" id="editExp">
+
+            <select id="editWatch">
+                <option value="1">1 เดือน</option>
+                <option value="2">2 เดือน</option>
+                <option value="3">3 เดือน</option>
+                <option value="4">4 เดือน</option>
+                <option value="5">5 เดือน</option>
+                <option value="6">6 เดือน</option>
+                <option value="7">7 เดือน</option>
+            </select>
+
+            <button class="edit-save-btn" onclick="saveEdit()">💾 บันทึก</button>
+            <button onclick="closeEdit()" class="cancel-btn">ปิด</button>
+
+        </div>
+    </div>
+
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbw5tyy9AWzZHkFNe_G1e89ncKCtwvFfZspHphvo0ufifXuDGrYP6LkvTZi3d2uJObNw/exec";
-        let USER_ID = "";
+        let USER_ID = "U9037c194fd875643bc1f0aba6ec349d7";
         let selectedDrug = "";
         let drugs = [];
+        let editingId = "";
 
         // filter drugs
         document.getElementById("category").addEventListener("change", loadDrugs);
@@ -544,23 +691,19 @@
                     if (navigator.vibrate) navigator.vibrate(50);
 
                     // 🔥 เคลียร์ฟอร์มทั้งหมด
-                    document.getElementById("category").value = "";
-                    document.getElementById("search").value = "";
-                    document.getElementById("lot").value = "";
-                    document.getElementById("expDate").value = "";
-                    document.getElementById("watchMonths").value = "";
+                    resetForm()
 
-                    document.getElementById("suggestions").innerHTML = "";
-
-                    selectedDrug = "";
-
-                    loadList();
                 });
         }
 
         // LOAD LIST
         function loadList() {
 
+            document.getElementById("dashboard").style.display = "none";
+
+            let expired = 0;
+            let warning = 0;
+            let safe = 0;
             const container = document.getElementById("list");
 
             // 🔥 ใส่ตรงนี้ (ก่อน fetch)
@@ -589,30 +732,64 @@
                         const div = document.createElement("div");
                         div.className = "card";
 
-                        if (item.daysLeft < 0)
-                            div.style.borderLeft = "5px solid red";
-                        else if (item.daysLeft <= 30)
-                            div.style.borderLeft = "5px solid orange";
-                        else
-                            div.style.borderLeft = "5px solid green";
+                        if (item.daysLeft < 0) expired++;
+                        else if (item.daysLeft <= 30) warning++;
+                        else safe++;
+
+                        if (item.daysLeft < 0) {
+                            div.style.borderLeft = "5px solid red";       // หมดอายุ
+                        } else if (item.daysLeft <= 30) {
+                            div.style.borderLeft = "5px solid orange";    // ใกล้หมด
+                        } else {
+                            div.style.borderLeft = "5px solid green";     // ปกติ (>30 วัน)
+                        }
 
                         let statusClass = "";
                         if (item.daysLeft < 0) statusClass = "expired";
                         else if (item.daysLeft <= 30) statusClass = "warning";
+                        else statusClass = "safe";
 
                         div.innerHTML = `
-                            <b>${item.drugName}</b><br>
-                            Lot: ${item.lot}<br>
-                            Exp: ${new Date(item.expDate).toLocaleDateString()}<br>
-                            <span class="${statusClass}">
-                            ${item.daysLeft < 0 ? "หมดอายุแล้ว" : "เหลือ " + item.daysLeft + " วัน"}
-                            </span>
-                            <br><br>
-                            <button class="danger" onclick="deleteItem('${item.id}')">ลบ</button>
+                            <div class="card-flex">
+
+                                <div class="card-left">
+                                    <b>${item.drugName}</b><br>
+                                    Lot: ${item.lot}<br>
+                                    Exp: ${new Date(item.expDate).toLocaleDateString()}<br>
+                                    <span class="${statusClass}">
+                                    ${item.daysLeft < 0
+                                ? "หมดอายุแล้ว " + Math.abs(item.daysLeft) + " วัน"
+                                : "เหลือ " + item.daysLeft + " วัน"}
+                                    </span>
+                                </div>
+
+                                <div class="card-right">
+                                    <button onclick="openEdit('${item.id}', '${item.drugName}', '${item.lot}', '${item.expDate}', ${item.watchMonths})">
+                                        แก้ไข
+                                    </button>
+                                    <button class="danger" onclick="deleteItem('${item.id}')">
+                                        ลบ
+                                    </button>
+                                </div>
+
+                            </div>
                         `;
 
                         container.appendChild(div);
                     });
+
+                    document.getElementById("countExpired").innerText = expired;
+                    document.getElementById("countWarning").innerText = warning;
+                    document.getElementById("countSafe").innerText = safe;
+
+                    const dash = document.getElementById("dashboard");
+                    dash.style.display = "block";
+                    dash.style.opacity = 0;
+
+                    setTimeout(() => {
+                        dash.style.opacity = 1;
+                    }, 50);
+
                 });
         }
 
@@ -689,7 +866,11 @@
             const btnAdd = document.getElementById("btnAdd");
             const btnList = document.getElementById("btnList");
 
+            const dash = document.getElementById("dashboard");
+
             if (page === "add") {
+
+                dash.style.display = "none";
 
                 resetForm();
 
@@ -703,6 +884,9 @@
                 btnAdd.classList.add("active");   // ✅ เพิ่ม
                 btnList.classList.remove("active"); // ✅ เพิ่ม
             } else {
+
+                dash.style.display = "block";
+
                 add.style.opacity = 0;
                 setTimeout(() => {
                     add.style.display = "none";
@@ -789,6 +973,62 @@
             showPage("add");
 
             document.getElementById("btnAdd").classList.add("active");
+        }
+
+        function openEdit(id, drug, lot, exp, watch) {
+            editingId = id;
+
+            document.getElementById("editDrug").value = drug;
+            document.getElementById("editLot").value = lot;
+            document.getElementById("editExp").value = exp.split("T")[0];
+            document.getElementById("editWatch").value = watch || "1";
+
+            document.getElementById("editOverlay").style.display = "flex";
+        }
+
+        function closeEdit() {
+            document.getElementById("editOverlay").style.display = "none";
+        }
+
+        function saveEdit() {
+
+            const btn = document.querySelector(".edit-save-btn");
+            btn.innerText = "กำลังบันทึก...";
+            btn.disabled = true;
+
+            const data = {
+                category: "tablet",
+                action: "editItem",
+                id: editingId,
+                drugName: document.getElementById("editDrug").value,
+                lot: document.getElementById("editLot").value,
+                expDate: document.getElementById("editExp").value,
+                watchMonths: Number(document.getElementById("editWatch").value),
+                userId: USER_ID
+            };
+
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify(data)
+            })
+                .then(res => res.json())
+                .then(() => {
+
+                    btn.innerText = "💾 บันทึก";   // ✅ คืนค่า
+                    btn.disabled = false;         // ✅ เปิดปุ่ม
+
+                    closeEdit();
+                    loadList();
+
+                    showPopup({
+                        message: "แก้ไขเรียบร้อย",
+                        type: "success"
+                    });
+                })
+                .catch(() => {
+                    btn.innerText = "💾 บันทึก";
+                    btn.disabled = false;
+                });
         }
 
         document.getElementById("category").addEventListener("change", () => {
