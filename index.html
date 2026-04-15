@@ -1066,6 +1066,18 @@
             loadDrugs();      // โหลดยา
         });
 
+        document.getElementById("editOverlay").addEventListener("click", function (e) {
+            if (e.target === this) {
+                closeEdit();
+            }
+        });
+
+        document.getElementById("popupOverlay").addEventListener("click", function (e) {
+            if (e.target === this) {
+                this.style.display = "none";
+            }
+        });
+
         // INIT
         toggleForm(false); // 🔒 ล็อกทั้งหมดตอนเข้าเว็บ
 
