@@ -417,6 +417,7 @@
             border-radius: 20px;
             width: 90%;
             max-width: 350px;
+            position: relative;
         }
 
         .edit-save-btn:disabled {
@@ -446,6 +447,21 @@
             width: 100%;
             font-size: 14px;
             padding: 8px;
+        }
+
+        .editpop {
+            color: #999;
+            font-size: 12px;
+            font-weight: 600;
+            position: absolute;
+            background-color: #fff;
+            margin-top: -8px;
+            margin-left: 5px;
+            padding: 0 8px;
+        }
+
+        .input-edit {
+            margin-bottom: 18px;
         }
     </style>
 </head>
@@ -546,11 +562,13 @@
         <div id="editBox">
 
             <h3>แก้ไขรายการยา</h3>
-
-            <input type="text" id="editDrug" placeholder="ชื่อยา">
-            <input type="text" id="editLot" placeholder="Lot">
-            <input type="date" id="editExp">
-
+            <label class="editpop">ชื่อยา</label>
+            <input class="input-edit" type="text" id="editDrug" placeholder="ชื่อยา">
+            <label class="editpop">Lot</label>
+            <input class="input-edit" type="text" id="editLot" placeholder="Lot">
+            <label class="editpop">วันหมดอายุ</label>
+            <input class="input-edit" type="date" id="editExp">
+            <label class="editpop">ระยะเฝ้าระวัง</label>
             <select id="editWatch">
                 <option value="1">1 เดือน</option>
                 <option value="2">2 เดือน</option>
